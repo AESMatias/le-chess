@@ -35,7 +35,7 @@ export const MovementIsValid = (board: string[][], pieceId:string, currentPositi
 
     const recursivePathCheckHorizontal = (currentPosition:  Coords, toPosition:Coords, direction:number) => {
 
-      const currentRow = currentPosition.row;
+      const currentRow = currentPosition['row'];
       const currentCol = currentPosition['col'];
       const toRow = toPosition['row'];
       const toCol = toPosition['col'];
@@ -48,6 +48,25 @@ export const MovementIsValid = (board: string[][], pieceId:string, currentPositi
         return recursivePathCheckHorizontal(
           { row: currentRow, col: currentCol+direction },
            toPosition, direction)
+      }
+      return false
+    }
+
+    const recursivePathCheckDiagonal = (currentPosition:Coords, toPosition:Coords,
+       directionRow:number, directionCol:number) => {
+      const currentRow = currentPosition['row'];
+      const currentCol = currentPosition['col'];
+      const toRow = toPosition['row'];
+      const toCol = toPosition['col'];
+
+      if (currentRow === toRow && currentCol === toCol) {
+        return true
+      }
+
+      if (board[currentRow][currentCol] === '') {
+        return recursivePathCheckDiagonal(
+          { row: currentRow+directionRow, col: currentCol+directionCol },
+           toPosition, directionRow, directionCol)
       }
       return false
     }
@@ -84,9 +103,37 @@ export const MovementIsValid = (board: string[][], pieceId:string, currentPositi
     }
   }
 
+  else if (pieceType === 'Queen') {
+    const directionVertical = currentRow < toRow ? +1 : -1;
+    const directionHorizontal = currentCol < toCol ? +1 : -1;
+    const diagonalDirectionRow = currentRow < toRow ? +1 : -1;
+    const diagonalDirectionCol = currentCol < toCol ? +1 : -1;
+    let isValid = false;
 
+    if (currentRow === toRow) {
+      isValid = recursivePathCheckHorizontal({row:currentRow, col:currentCol + directionHorizontal}, toPosition, directionHorizontal)
+    }
+    if (currentCol === toCol) {
+      isValid = recursivePathCheckVertical({row:currentRow + directionVertical, col:currentCol}, toPosition, directionVertical)
+    }
+    if (Math.abs(currentRow - toRow) === Math.abs(currentCol - toCol)) {
+      isValid = recursivePathCheckDiagonal({row:currentRow + diagonalDirectionRow, col:currentCol + diagonalDirectionCol}, toPosition, diagonalDirectionRow, diagonalDirectionCol)
+    }
 
+    return isValid
+  }
 
+  else if (pieceType === 'Bishop') {
+    const diagonalDirectionRow = currentRow < toRow ? +1 : -1;
+    const diagonalDirectionCol = currentCol < toCol ? +1 : -1;
+    let isValid = false;
+
+    if (Math.abs(currentRow - toRow) === Math.abs(currentCol - toCol)) {
+      isValid = recursivePathCheckDiagonal({row:currentRow + diagonalDirectionRow, col:currentCol + diagonalDirectionCol}, toPosition, diagonalDirectionRow, diagonalDirectionCol)
+    }
+
+    return isValid
+  }
 
   else if (pieceType === 'Rook') {
     const directionVertical = currentRow < toRow ? +1 : -1;
@@ -102,6 +149,47 @@ export const MovementIsValid = (board: string[][], pieceId:string, currentPositi
 
     return isValid
   }
+
+  else if (pieceType === 'Knight') {
+    if (toRow === currentRow + 2 && (toCol === currentCol + 1 || toCol === currentCol - 1)) {
+      return true
+    }
+    if (toRow === currentRow - 2 && (toCol === currentCol + 1 || toCol === currentCol - 1)) {
+      return true
+    }
+    if (toCol === currentCol + 2 && (toRow === currentRow + 1 || toRow === currentRow - 1)) {
+      return true
+    }
+    if (toCol === currentCol - 2 && (toRow === currentRow + 1 || toRow === currentRow - 1)) {
+      return true
+    }
+  }
+
+  else if (pieceType === 'King') {
+    if ((toRow === currentRow + 1 || toRow === currentRow - 1) && toCol === currentCol) {
+      return true
+    }
+    if (toCol === currentCol + 1 && toRow === currentRow) {
+      return true
+    }
+    if (toCol === currentCol - 1 && toRow === currentRow) {
+      return true
+    }
+    if (toRow === currentRow + 1 && toCol === currentCol + 1) {
+      return true
+    }
+    if (toRow === currentRow + 1 && toCol === currentCol - 1) {
+      return true
+    }
+    if (toRow === currentRow - 1 && toCol === currentCol + 1) {
+      return true
+    }
+    if (toRow === currentRow - 1 && toCol === currentCol - 1) {
+      return true
+    }
+  }
+
+
   return (
     isValid
   )

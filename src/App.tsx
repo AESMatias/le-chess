@@ -90,8 +90,9 @@ function App() {
     return board;
   }
 
-  const piece = (pieceName: string, color: string, row: number, col:number) => {
+  const Piece = (pieceName: string, color: string, row: number, col:number, isRewarded ) => {
 
+    // const [hasBeenRewarded, sethasBeenRewarded] = useState(false);
     const pieceColorShort = color === 'white' ? 'W' : 'B';
 
     return (
@@ -172,7 +173,7 @@ function App() {
 
                   return (
                     <div key={cellIndex} className={`cell_${cellIndex}`} style={cellStyle}>
-                      {piece(pieceName, pieceColor, rowIndex, cellIndex)}
+                      {Piece(pieceName, pieceColor, rowIndex, cellIndex, false)}
                     </div>
                   )
                 })
