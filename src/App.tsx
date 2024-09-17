@@ -2,6 +2,7 @@ import { useState, useEffect, DragEvent } from 'react'
 import './App.css'
 import {svgPieces} from './assets/svgPieces.tsx'
 import {MovementIsValid} from './MovementIsValid.tsx'
+import isInDanger from './isInDanger.tsx';
 
 
 interface Coords {
@@ -10,14 +11,23 @@ interface Coords {
   piece: string;
 }
 
+interface KingStatus {
+  whiteKingStatus: boolean;
+  blackKingStatus: boolean;
+}
+
 function App() {
 
   const [board, setBoard] = useState<string[][]>([]);
   const [draggedPiece, setDraggedPiece] = useState<Coords>({ row: -1, col: -1, piece: '' });
+  const [kingWhitePos, setKingWhitePos] = useState<Coords>({ row: 0, col: 4, piece: 'White_King' });
+  const [kingBlackPos, setKingBlackPos] = useState<Coords>({ row: 7, col: 4, piece: 'Black_King' });
+
+
 
   const handleDragStart = (e:DragEvent, row: number, col: number) => {
     setDraggedPiece({ row, col, piece: board[row][col] });
-    // e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.effectAllowed = "move"; //That avoids the green plus sign
     console.log('draggedPiece', draggedPiece, 'row', row, 'col', col);
 
   };
@@ -37,23 +47,124 @@ function App() {
       return;
     }
 
+    // isInDanger(board, draggedPiece.piece, {row: draggedPiece.row, col: draggedPiece.col});
+    // console.log('isInDanger', isInDanger(board, draggedPiece.piece, {row: row, col: col}));
+
 
     if (draggedPiece && isValid) {
+
+      let kingBlackRow = kingBlackPos.row;
+      let kingBlackCol = kingBlackPos.col;
+  
+      let kingWhiteRow = kingWhitePos.row;
+      let kingWhiteCol = kingWhitePos.col;
+  
+      let kingWhiteDanger = false;
+      let kingBlackDanger = false;
+  
+      //We need to update the position of the king after each movement
+      if (draggedPiece.piece === 'White_King') {
+        kingWhiteRow = row;
+        kingWhiteCol = col;
+        kingWhiteDanger = isInDanger(board, 'White_King', {row, col});
+
+        if (kingWhiteDanger) {
+          console.error('Check! White King in danger');
+          return;
+        }
+        setKingWhitePos({ row, col, piece: 'White_King' }); 
+      }
+      
+      if (draggedPiece.piece === 'Black_King') {
+        kingBlackRow = row;
+        kingBlackCol = col;
+        kingWhiteDanger = isInDanger(board, 'Black_King', {row, col});
+
+        if (kingWhiteDanger) {
+          console.error('Check! Black King in danger');
+          return;
+        }
+        setKingBlackPos({ row, col, piece: 'Black_King' }); 
+      }
+    
+      if (draggedPiece.piece.split('_')[1] !== 'King') {
+
+      kingWhiteDanger = isInDanger(board, 'White_King', {row: kingWhiteRow, col: kingWhiteCol});
+      kingBlackDanger = isInDanger(board, 'Black_King', {row: kingBlackRow, col: kingBlackCol});
+      }
+
+      //TODO: Check if the king is moving to a check position, if so, don't allow the movement and show a message 
+      if (kingWhiteDanger && draggedPiece.piece !== 'White_King'
+        && draggedPiece.piece.split('_')[0] === 'White') {
+        console.error('White King in danger');
+        kingWhiteDanger = false;
+        return;
+      }
+
+      if (kingBlackDanger && draggedPiece.piece !== 'Black_King'
+        && draggedPiece.piece.split('_')[0] === 'Black') {
+
+        console.error('Black King in danger');
+        kingBlackDanger = false;
+        return;
+      }
+
       const newBoard = board.slice();
       newBoard[draggedPiece.row][draggedPiece.col] = '';
       newBoard[row][col] = draggedPiece.piece;
       setBoard(newBoard);
-      // setDraggedPiece({ row: -1, col: -1, piece: '' });
+
     }
   };
 
+  const checkIfCheck = (row:number, col:number) => {
+console.log('a')
+    // const kingBlackRow = kingBlackPos.row;
+    // const kingBlackCol = kingBlackPos.col;
+
+    // const kingWhiteRow = kingWhitePos.row;
+    // const kingWhiteCol = kingWhitePos.col;
+
+    // let kingWhiteDanger = false;
+    // let kingBlackDanger = false;
+
+    // //We need to update the position of the king after each movement
+    // if (draggedPiece.piece === 'White_King') {
+    //   setKingWhitePos({ row, col, piece: 'White_King' });
+    //   kingWhiteDanger = isInDanger(board, 'White_King', {row, col});
+    // }
+    
+    // if (draggedPiece.piece === 'Black_King') {
+    //   setKingBlackPos({ row, col, piece: 'Black_King' })
+    //   kingBlackDanger = isInDanger(board, 'Black_King', {row, col});
+    // }
+  
+    // if (draggedPiece.piece.split('_')[1] !== 'King') {
+    // kingWhiteDanger = isInDanger(board, 'White_King', {row: kingWhiteRow, col: kingWhiteCol});
+    // kingBlackDanger = isInDanger(board, 'Black_King', {row: kingBlackRow, col: kingBlackCol});
+    // }
+
+    // if (kingWhiteDanger) {
+    //   console.error('Check! White King in danger');
+    //   kingWhiteStatus = true;
+    // }
+
+    // if (kingBlackDanger) {
+    //   console.error('Check! Black King in danger');
+    //   kingBlackStatus = true;
+    // }
+  }
+
   const createChessboard = () => {
     const board: string[][] = [];
+
     for (let row = 0; row < 8; row++) {
       board[row] = [];
+
       for (let col = 0; col < 8; col++) {
         board[row][col] = ''; 
       }
+
     }
     return board;
   }
@@ -84,9 +195,11 @@ function App() {
     board[7][5] = 'Black_Bishop';
     board[7][6] = 'Black_Knight';
     board[7][7] = 'Black_Rook';
+
     for (let col = 0; col < 8; col++) {
       board[6][col] = 'Black_Pawn';
     }
+
     return board;
   }
 

@@ -3,7 +3,6 @@ import { Coords } from './Types.tsx';
 
 export const MovementIsValid = (board: string[][], pieceId:string, currentPosition: Coords, toPosition: Coords) => {
 
-    //TODO: Check the pieces don't go out of the board!
     let isValid = false;
     const currentRow = currentPosition['row'];
     const currentCol = currentPosition['col'];
@@ -13,7 +12,12 @@ export const MovementIsValid = (board: string[][], pieceId:string, currentPositi
     const pieceType = pieceId.split('_')[1];
     // const pieceColor = pieceId.split('_')[0];
     // const aimPieceColor = board[toRow][toCol].split('_')[0];
-  
+
+    //TODO: Check the pieces don't go out of the board in the server!
+    if (toCol < 0 || toCol > 8 || toRow < 0 || toRow > 8) {
+      console.log("Invalid movement, out of the board")
+      return false
+    }
 
     const recursivePathCheckVertical = (currentPosition:Coords, toPosition:Coords, direction:number) => {
       const currentRow = currentPosition['row'];
@@ -71,12 +75,6 @@ export const MovementIsValid = (board: string[][], pieceId:string, currentPositi
       return false
     }
 
-    
-  if (toCol < 0 || toCol > 8 || toRow < 0 || toRow > 8) {
-    console.log("Invalid movement, out of the board")
-    return false
-  }
-
   const isAimSameColor = isAimSameColorPieces(board, currentPosition, toPosition)
 
   if (isAimSameColor) {
@@ -117,7 +115,8 @@ export const MovementIsValid = (board: string[][], pieceId:string, currentPositi
       isValid = recursivePathCheckVertical({row:currentRow + directionVertical, col:currentCol}, toPosition, directionVertical)
     }
     if (Math.abs(currentRow - toRow) === Math.abs(currentCol - toCol)) {
-      isValid = recursivePathCheckDiagonal({row:currentRow + diagonalDirectionRow, col:currentCol + diagonalDirectionCol}, toPosition, diagonalDirectionRow, diagonalDirectionCol)
+      isValid = recursivePathCheckDiagonal({row:currentRow + diagonalDirectionRow, col:currentCol + diagonalDirectionCol},
+         toPosition, diagonalDirectionRow, diagonalDirectionCol)
     }
 
     return isValid
@@ -129,7 +128,8 @@ export const MovementIsValid = (board: string[][], pieceId:string, currentPositi
     let isValid = false;
 
     if (Math.abs(currentRow - toRow) === Math.abs(currentCol - toCol)) {
-      isValid = recursivePathCheckDiagonal({row:currentRow + diagonalDirectionRow, col:currentCol + diagonalDirectionCol}, toPosition, diagonalDirectionRow, diagonalDirectionCol)
+      isValid = recursivePathCheckDiagonal({row:currentRow + diagonalDirectionRow, col:currentCol + diagonalDirectionCol},
+         toPosition, diagonalDirectionRow, diagonalDirectionCol)
     }
 
     return isValid
@@ -169,26 +169,16 @@ export const MovementIsValid = (board: string[][], pieceId:string, currentPositi
     if ((toRow === currentRow + 1 || toRow === currentRow - 1) && toCol === currentCol) {
       return true
     }
-    if (toCol === currentCol + 1 && toRow === currentRow) {
+    if ((toCol === currentCol + 1 || toCol === currentCol - 1) && toRow === currentRow) {
       return true
     }
-    if (toCol === currentCol - 1 && toRow === currentRow) {
+    if (toRow === currentRow + 1 && (toCol === currentCol + 1 || toCol === currentCol - 1)) {
       return true
     }
-    if (toRow === currentRow + 1 && toCol === currentCol + 1) {
-      return true
-    }
-    if (toRow === currentRow + 1 && toCol === currentCol - 1) {
-      return true
-    }
-    if (toRow === currentRow - 1 && toCol === currentCol + 1) {
-      return true
-    }
-    if (toRow === currentRow - 1 && toCol === currentCol - 1) {
+    if (toRow === currentRow - 1 && (toCol === currentCol + 1 || toCol === currentCol - 1)) {
       return true
     }
   }
-
 
   return (
     isValid
