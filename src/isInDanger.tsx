@@ -1,22 +1,26 @@
-import {isAimSameColorPieces} from './isAimSameColorPieces.tsx';
 import { Coords } from './Types.tsx';
+import {MovementIsValid} from './MovementIsValid.tsx';
 
 type PieceWithCoords = {
   piece: string;
   position: Coords;
 }
 
-export const isInDanger = (board: string[][], pieceId:string, currentPosition: Coords) => {
+type returnedObject = {
+  inDanger: boolean;
+  currentDangerPiecesLineal: PieceWithCoords[];
+  currentDangerPicesDiagonal: PieceWithCoords[];
+  currentKnightPathPieces: PieceWithCoords[];
+}
 
-    // console.error('ahora el board es', board)
+export const isInDanger = (board: string[][], pieceId:string, currentPosition: Coords):returnedObject => {
+
     let inDanger = false;
     const currentRow = currentPosition['row'];
     const currentCol = currentPosition['col'];
     const currentDangerPiecesLineal: PieceWithCoords[] = [];
     const currentDangerPicesDiagonal: PieceWithCoords[] = [];
     const currentKnightPathPieces: PieceWithCoords[] = [];
-
-    // const pieceType = pieceId.split('_')[1];
     const pieceColor = pieceId.split('_')[0];
 
     //TODO: Check the pieces don't go out of the board!
@@ -28,24 +32,40 @@ export const isInDanger = (board: string[][], pieceId:string, currentPosition: C
         return false
       }
 
-      if (board[currentRow+direction][currentCol].split('_')[0] === pieceColor){
+
+      const currentDangerousPiece = board[currentRow+direction][currentCol]
+
+      if (currentDangerousPiece.split('_')[0] === pieceColor){
         return false
       }
 
-      if (board[currentRow+direction][currentCol] !== '') {
+      if (currentDangerousPiece !== '') {
+
+        const isValid = MovementIsValid(board, currentDangerousPiece,
+          {row: currentRow+direction, col: currentCol},
+          currentPosition
+        )
+
+        if (!isValid) {
+          return true
+        }
+
         currentDangerPiecesLineal.push({
-          piece:board[currentRow+direction][currentCol],
+          piece:currentDangerousPiece,
           position:{row:currentRow+direction, col:currentCol}
          })
+
         return true;
       }
 
-      if (board[currentRow+direction][currentCol] === '') {
+      if (currentDangerousPiece === '') {
         return recursivePathCheckVertical(
           { row: currentRow+direction, col: currentCol }, direction)
       }
+
       return false
     }
+
 
     const recursivePathCheckHorizontal = (currentPosition:Coords, direction:number) => {
       const currentRow = currentPosition['row'];
@@ -55,49 +75,77 @@ export const isInDanger = (board: string[][], pieceId:string, currentPosition: C
         return false
       }
 
-      if (board[currentRow][currentCol+direction].split('_')[0] === pieceColor){
+      const currentDangerousPiece = board[currentRow][currentCol+direction]
+
+      if (currentDangerousPiece.split('_')[0] === pieceColor){
         return false
       }
 
-      if (board[currentRow][currentCol+direction] !== '') {
+      if (currentDangerousPiece !== '') {
+
+        const isValid = MovementIsValid(board, currentDangerousPiece,
+          {row: currentRow, col: currentCol+direction},
+          currentPosition
+        )
+
+        if (!isValid) {
+          return true
+        }
+
         currentDangerPiecesLineal.push({
-          piece:board[currentRow][currentCol+direction],
+          piece:currentDangerousPiece,
           position:{row:currentRow, col:currentCol+direction}
          })
+         
         return true;
       }
 
-      if (board[currentRow][currentCol+direction] === '') {
+      if (currentDangerousPiece === '') {
         return recursivePathCheckHorizontal(
           { row: currentRow, col: currentCol+direction }, direction)
       }
       return false
     }
 
+
     const recursivePathCheckDiagonal = (currentPosition:Coords, directionRow:number, directionCol:number) => {
      const currentRow = currentPosition['row'];
      const currentCol = currentPosition['col'];
+     //TODO: Refactor the currentDangerousPiece in every recursive function
 
       //TODO: Check the pieces don't go out of the board in the server, very important!
       if ((currentRow+directionRow < 0 || currentRow+directionRow > 7) || 
       (currentCol+directionCol < 0 || currentCol+directionCol > 7)) {
         return false
       }
+      const currentDangerousPiece = board[currentRow+directionRow][currentCol+directionCol]
 
     
-      if (board[currentRow+directionRow][currentCol+directionCol].split('_')[0] === pieceColor){
-        // if (directionRow === 1 || directionCol === 1) {
-        //   console.log('revisando en diagonal', currentRow, currentCol)
-        // }
+      if (currentDangerousPiece.split('_')[0] === pieceColor){
         return false
       }
 
-      if (board[currentRow+directionRow][currentCol+directionCol] !== '') {
+      if (currentDangerousPiece !== '') {
         
-        currentDangerPicesDiagonal.push({
-          piece:board[currentRow+directionRow][currentCol+directionCol],
-          position:{ row:currentRow+directionRow, col:currentCol+directionCol}
-         })
+        const isValid = MovementIsValid(board, currentDangerousPiece,
+          {row: currentRow+directionRow, col: currentCol+directionCol},
+          currentPosition
+        )
+
+        // if (isValid) {
+
+          // if(currentDangerousPiece.split('_')[1] === 'Bishop') {
+            console.log('se agregooooo ', currentDangerousPiece, 
+              'en la posicion', {row: currentRow+directionRow, col: currentCol+directionCol},
+            'luego de revisar la posicion', currentPosition)
+          // }
+
+
+          currentDangerPicesDiagonal.push({
+            piece:currentDangerousPiece,
+            position:{ row:currentRow+directionRow, col:currentCol+directionCol}
+           })
+        // }
 
         return true;
       }
@@ -111,6 +159,7 @@ export const isInDanger = (board: string[][], pieceId:string, currentPosition: C
      return false
    }
 
+
    const recursiveKnightCheck = (currentPosition:Coords, directionRow:number, directionCol:number) => {
     //TODO: This func is not recursive, i need to rename it
     const currentRow = currentPosition['row'];
@@ -121,13 +170,25 @@ export const isInDanger = (board: string[][], pieceId:string, currentPosition: C
         return false
       }
 
-      if (board[currentRow+directionRow][currentCol+directionCol].split('_')[0] === pieceColor){
+      const currentDangerousPiece = board[currentRow+directionRow][currentCol+directionCol]
+
+      if (currentDangerousPiece.split('_')[0] === pieceColor){
         return false
       }
 
-      if (board[currentRow+directionRow][currentCol+directionCol] !== '') {
+      if (currentDangerousPiece !== '') {
+
+        const isValid = MovementIsValid(board, currentDangerousPiece,
+          {row: currentRow+directionRow, col: currentCol+directionCol},
+          currentPosition
+        )
+
+        if (!isValid) {
+          return true
+        }
+
         currentKnightPathPieces.push({
-          piece:board[currentRow+directionRow][currentCol+directionCol],
+          piece:currentDangerousPiece,
           position:{ row:currentRow+directionRow, col:currentCol+directionCol}
          })
 
@@ -182,7 +243,6 @@ export const isInDanger = (board: string[][], pieceId:string, currentPosition: C
 
       currentDangerPicesDiagonal.forEach(piece => {
 
-
         if (piece.piece.split('_')[1] === 'Queen') {
           inDanger = true;
         }
@@ -204,7 +264,6 @@ export const isInDanger = (board: string[][], pieceId:string, currentPosition: C
         if (piece.piece === 'White_Pawn' && (currentRow - piece.position.row === 1)) {
           inDanger = true;
         }
-
       })
     }
 
@@ -216,11 +275,10 @@ export const isInDanger = (board: string[][], pieceId:string, currentPosition: C
           inDanger = true;
         }
       })
-
     }
 
   return (
-    inDanger
+    { inDanger, currentDangerPiecesLineal, currentDangerPicesDiagonal, currentKnightPathPieces }
   )
 }
 

@@ -11,10 +11,16 @@ interface Coords {
   piece: string;
 }
 
-interface KingStatus {
-  whiteKingStatus: boolean;
-  blackKingStatus: boolean;
+// interface KingStatus {
+//   whiteKingStatus: boolean;
+//   blackKingStatus: boolean;
+// }
+
+interface DangerPiece {
+  piece: string;
+  position: { row: number; col: number };
 }
+
 
 function App() {
 
@@ -22,13 +28,166 @@ function App() {
   const [draggedPiece, setDraggedPiece] = useState<Coords>({ row: -1, col: -1, piece: '' });
   const [kingWhitePos, setKingWhitePos] = useState<Coords>({ row: 0, col: 4, piece: 'White_King' });
   const [kingBlackPos, setKingBlackPos] = useState<Coords>({ row: 7, col: 4, piece: 'Black_King' });
+  const [whoColorAmI, setWhoColorAmI] = useState<string>('White');
+  const [whoGoes, setWhoGoes] = useState<string>('White');
+  const [stepsCounter, setStepsCounter] = useState<number>(0);
+  //TODO: The stepsCounter finishes 1 movement ahead when someone wins, fix it
 
+  useEffect(() => {
+
+
+    if (stepsCounter === 0) {
+      return; //This is to avoid the first render when the board is empty
+    }
+
+    const kingBlackRow = kingBlackPos.row;
+    const kingBlackCol = kingBlackPos.col;
+
+    const kingWhiteRow = kingWhitePos.row;
+    const kingWhiteCol = kingWhitePos.col;
+
+    //TODO: Check if the Kings are in danger after each movement
+    const objectKingWhite = isInDanger(board, 'White_King', {row: kingWhiteRow, col: kingWhiteCol});
+    const objectKingBlack = isInDanger(board, 'Black_King', {row: kingBlackRow, col: kingBlackCol});
+
+    const checkIsCheckMate = (row:number, col:number, kingColor:string) => {
+
+      console.error('***The King is in danger, let\'s check if it\'s checkmate***');
+
+      const possibleMoves = [
+        {row: row+1, col: col},
+        {row: row-1, col: col},
+        {row: row, col: col+1},
+        {row: row, col: col-1},
+        {row: row+1, col: col+1},
+        {row: row+1, col: col-1},
+        {row: row-1, col: col+1},
+        {row: row-1, col: col-1},
+      ];
+
+      let possibleDangerPieces = [];
+      const actualDangerPieces: DangerPiece[] = [];
+
+      if(whoGoes === 'White') {
+      possibleDangerPieces = objectKingWhite.currentDangerPiecesLineal
+      .concat(objectKingWhite.currentDangerPicesDiagonal)
+      .concat(objectKingWhite.currentKnightPathPieces);
+      } else {
+        possibleDangerPieces = objectKingBlack.currentDangerPiecesLineal
+        .concat(objectKingBlack.currentDangerPicesDiagonal)
+        .concat(objectKingBlack.currentKnightPathPieces);
+      }
+
+      console.error('PossibleDangerPieces', possibleDangerPieces);
+
+      let isCheckMate = true;
+
+
+      possibleDangerPieces?.forEach((piece) => {
+        
+        if (kingColor === 'White') {
+          const validDanger = MovementIsValid(board, piece.piece, piece.position, kingWhitePos) ? true : false;
+          
+          if (validDanger) {
+            actualDangerPieces.push(piece);
+          }
+
+        }
+
+        if (kingColor === 'Black') {
+          const validDanger = MovementIsValid(board, piece.piece, piece.position, kingBlackPos) ? true : false;
+
+          if (validDanger) {
+            actualDangerPieces.push(piece);
+          }
+
+        }
+        });
+
+
+
+        //TODO: If we check above all the pieces, that for wouldn't be necessary
+      for (let i = 0; i < possibleMoves.length; i++) {
+
+        if (possibleMoves[i].row < 0 || possibleMoves[i].row > 7 || possibleMoves[i].col < 0 || possibleMoves[i].col > 7) {
+          continue;
+        }
+
+        if (!MovementIsValid(board, `${kingColor}_King`, {row, col}, possibleMoves[i])) {
+          continue;
+        }
+
+        const returnedDanger = isInDanger(board, `${kingColor}_King`, possibleMoves[i]);
+        const isDanger = returnedDanger.inDanger;
+
+        if (!isDanger) {
+          //We can push to an array the possible moves the king can do in order to scape
+          console.error(`The king ${kingColor} would be not in danger if does the movement: `, possibleMoves[i]);
+          //Once we have the possible moves, we need to check recursively if these moves are dangerous or not
+          isCheckMate = false;
+          break;
+        }
+      }
+
+      
+      console.log('ActualDangerPieces', actualDangerPieces);
+      // let dangerousPossibleEatablePieces = [];
+
+      const colorPiecesToSearch = kingColor === 'White' ? 'White' : 'Black';
+
+    actualDangerPieces.forEach((actualDangerPiece) => {
+
+        board.forEach((rowArray, row) => {
+
+          rowArray.forEach((piece, col) => {
+
+            console.error(' estamos buscando piezas de color', colorPiecesToSearch);
+
+              if(piece.split('_')[0] === colorPiecesToSearch) {
+
+              //TODO: Refactor this two ifs statements into a more compact one
+
+                const isValid = MovementIsValid(board, piece, {row, col},
+                  {row: actualDangerPiece.position.row, col: actualDangerPiece.position.col});
+
+                if (isValid) {
+                  // dangerousPossibleEatablePieces.push({piece, position: {row, col}});
+                  
+                  console.error('HAY UNA SALIDA AL JAQUE EN:::::', piece, {row, col},
+                    'que se debe mover hacia', actualDangerPiece.position);
+
+                  isCheckMate = false;
+
+                }
+
+            }
+
+            });
+
+          });
+
+      });
+
+
+      if (isCheckMate) {
+        alert('Checkmate!');
+        console.error('CHECKMATE, THE KING LOSER IS', kingColor);
+      }
+    }
+
+
+    if (objectKingWhite.inDanger || objectKingBlack.inDanger) {
+      alert('Check! The king is in danger');
+      checkIsCheckMate(kingWhiteRow, kingWhiteCol, `${whoGoes === 'White' ? 'White' : 'Black'}`);
+      // checkIsCheckMate(kingBlackRow, kingBlackCol, 'Black');
+    }
+  }
+  , [whoGoes]);
 
 
   const handleDragStart = (e:DragEvent, row: number, col: number) => {
     setDraggedPiece({ row, col, piece: board[row][col] });
     e.dataTransfer.effectAllowed = "move"; //That avoids the green plus sign
-    console.log('draggedPiece', draggedPiece, 'row', row, 'col', col);
 
   };
 
@@ -39,6 +198,7 @@ function App() {
 
   const handleDrop = (e:DragEvent, row: number, col: number) => {
     e.preventDefault();
+    const pieceColor = draggedPiece.piece.split('_')[0];
 
     const isValid = MovementIsValid(board, draggedPiece.piece,
        {row: draggedPiece.row, col: draggedPiece.col}, {row, col});
@@ -46,9 +206,6 @@ function App() {
     if (draggedPiece.row === row && draggedPiece.col === col) {
       return;
     }
-
-    // isInDanger(board, draggedPiece.piece, {row: draggedPiece.row, col: draggedPiece.col});
-    // console.log('isInDanger', isInDanger(board, draggedPiece.piece, {row: row, col: col}));
 
 
     if (draggedPiece && isValid) {
@@ -61,13 +218,25 @@ function App() {
   
       let kingWhiteDanger = false;
       let kingBlackDanger = false;
+
+      
+
+      if (whoGoes !== pieceColor) { //TODO: Legitimize to admit the user only moves his pieces
+        console.error('You cannot move the other player pieces');
+        return;
+      }
   
       //We need to update the position of the king after each movement
       if (draggedPiece.piece === 'White_King') {
         kingWhiteRow = row;
         kingWhiteCol = col;
-        kingWhiteDanger = isInDanger(board, 'White_King', {row, col});
+        const returnedDanger = isInDanger(board, 'White_King', {row, col});
+        kingWhiteDanger = returnedDanger.inDanger;
 
+
+        console.error('indanger returns', returnedDanger);
+        
+        
         if (kingWhiteDanger) {
           console.error('Check! White King in danger');
           return;
@@ -78,9 +247,10 @@ function App() {
       if (draggedPiece.piece === 'Black_King') {
         kingBlackRow = row;
         kingBlackCol = col;
-        kingWhiteDanger = isInDanger(board, 'Black_King', {row, col});
+        const returnedDanger = isInDanger(board, 'Black_King', {row, col});
+        kingBlackDanger = returnedDanger.inDanger;
 
-        if (kingWhiteDanger) {
+        if (kingBlackDanger) {
           console.error('Check! Black King in danger');
           return;
         }
@@ -88,27 +258,42 @@ function App() {
       }
     
       if (draggedPiece.piece.split('_')[1] !== 'King') {
+      const returnedDangerWhite = isInDanger(board, 'White_King', {row: kingWhiteRow, col: kingWhiteCol});
+      const returnedDangerBlack = isInDanger(board, 'Black_King', {row: kingBlackRow, col: kingBlackCol});
+      
 
-      kingWhiteDanger = isInDanger(board, 'White_King', {row: kingWhiteRow, col: kingWhiteCol});
-      kingBlackDanger = isInDanger(board, 'Black_King', {row: kingBlackRow, col: kingBlackCol});
+      kingWhiteDanger = returnedDangerWhite.inDanger;
+      kingBlackDanger = returnedDangerBlack.inDanger;
       }
 
-      //TODO: Check if the king is moving to a check position, if so, don't allow the movement and show a message 
+
+      // // TODO: TODO: Check if there's conflict when the two kings are in danger!
+      // if (kingWhiteDanger) {
+      //   checkIsCheckMate(kingWhiteRow, kingWhiteCol, 'White');
+      // }
+      // if (kingBlackDanger) {
+      //   checkIsCheckMate(kingBlackRow, kingBlackCol, 'Black');
+      // }
+      
+
+      
+      //Check if the king's are moving to a check position, if so, don't allow the movement and show a message 
       if (kingWhiteDanger && draggedPiece.piece !== 'White_King'
         && draggedPiece.piece.split('_')[0] === 'White') {
-        console.error('White King in danger');
-        kingWhiteDanger = false;
+        console.error('White King in danger, you cannot MOVE THIS PIECE');
+        // kingWhiteDanger = false;
         return;
       }
 
       if (kingBlackDanger && draggedPiece.piece !== 'Black_King'
         && draggedPiece.piece.split('_')[0] === 'Black') {
-
-        console.error('Black King in danger');
-        kingBlackDanger = false;
+          console.error('BLACK King in danger, you cannot MOVE THIS PIECE');
+        // kingBlackDanger = false;
         return;
       }
 
+      setWhoGoes(whoGoes === 'White' ? 'Black' : 'White');
+      setStepsCounter(stepsCounter + 1);
       const newBoard = board.slice();
       newBoard[draggedPiece.row][draggedPiece.col] = '';
       newBoard[row][col] = draggedPiece.piece;
@@ -116,44 +301,6 @@ function App() {
 
     }
   };
-
-  const checkIfCheck = (row:number, col:number) => {
-console.log('a')
-    // const kingBlackRow = kingBlackPos.row;
-    // const kingBlackCol = kingBlackPos.col;
-
-    // const kingWhiteRow = kingWhitePos.row;
-    // const kingWhiteCol = kingWhitePos.col;
-
-    // let kingWhiteDanger = false;
-    // let kingBlackDanger = false;
-
-    // //We need to update the position of the king after each movement
-    // if (draggedPiece.piece === 'White_King') {
-    //   setKingWhitePos({ row, col, piece: 'White_King' });
-    //   kingWhiteDanger = isInDanger(board, 'White_King', {row, col});
-    // }
-    
-    // if (draggedPiece.piece === 'Black_King') {
-    //   setKingBlackPos({ row, col, piece: 'Black_King' })
-    //   kingBlackDanger = isInDanger(board, 'Black_King', {row, col});
-    // }
-  
-    // if (draggedPiece.piece.split('_')[1] !== 'King') {
-    // kingWhiteDanger = isInDanger(board, 'White_King', {row: kingWhiteRow, col: kingWhiteCol});
-    // kingBlackDanger = isInDanger(board, 'Black_King', {row: kingBlackRow, col: kingBlackCol});
-    // }
-
-    // if (kingWhiteDanger) {
-    //   console.error('Check! White King in danger');
-    //   kingWhiteStatus = true;
-    // }
-
-    // if (kingBlackDanger) {
-    //   console.error('Check! Black King in danger');
-    //   kingBlackStatus = true;
-    // }
-  }
 
   const createChessboard = () => {
     const board: string[][] = [];
@@ -204,6 +351,7 @@ console.log('a')
   }
 
   const Piece = (pieceName: string, color: string, row: number, col:number, isRewarded ) => {
+    // TODO: isRewarded should be a component state of the piece, we should change Piece to a functional component
 
     // const [hasBeenRewarded, sethasBeenRewarded] = useState(false);
     const pieceColorShort = color === 'white' ? 'W' : 'B';
@@ -268,6 +416,8 @@ console.log('a')
         </a>
       </div> */}
       <h1>Le Chess</h1>
+      <h3>Current player: {whoGoes}</h3>
+      <h3>Steps: {stepsCounter}</h3>
       {/* <div className="card">
         <button onClick={() => setCount((count) => count + 1)}>
           count is {count}
