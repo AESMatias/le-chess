@@ -3,7 +3,7 @@ import './App.css'
 import {svgPieces} from './assets/svgPieces.tsx'
 import {MovementIsValid} from './MovementIsValid.tsx'
 import isInDanger from './isInDanger.tsx';
-
+import io from 'socket.io-client';
 
 interface Coords {
   row: number;
@@ -21,174 +21,312 @@ interface DangerPiece {
   position: { row: number; col: number };
 }
 
+interface movementData {
+  piece: string;
+  from: { row: number; col: number };
+  to: { row: number; col: number };
+}
+
+interface actualBoard {
+  board: string[][];
+}
+
+// const PORT = process.env.PORT || 3000;
 
 function App() {
 
-  const [board, setBoard] = useState<string[][]>([]);
+  const [board, setBoard] = useState<string[][]>([
+    ['White_Rook', 'White_Knight', 'White_Bishop', 'White_Queen', 'White_King', 'White_Bishop', 'White_Knight', 'White_Rook'],
+    ['', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', ''],
+    ['Black_Rook', 'Black_Knight', 'Black_Bishop', 'Black_Queen', 'Black_King', 'Black_Bishop', 'Black_Knight', 'Black_Rook']
+  ]);
   const [draggedPiece, setDraggedPiece] = useState<Coords>({ row: -1, col: -1, piece: '' });
   const [kingWhitePos, setKingWhitePos] = useState<Coords>({ row: 0, col: 4, piece: 'White_King' });
   const [kingBlackPos, setKingBlackPos] = useState<Coords>({ row: 7, col: 4, piece: 'Black_King' });
-  const [whoColorAmI, setWhoColorAmI] = useState<string>('White');
+  // const [whoColorAmI, setWhoColorAmI] = useState<string>('White');
   const [whoGoes, setWhoGoes] = useState<string>('White');
-  const [stepsCounter, setStepsCounter] = useState<number>(0);
+  const [stepsCounter, setStepsCounter] = useState<number>(-2);
+  const [socketData, setSocketData] = useState(0);
+  const [boardLoaded, setBoardLoaded] = useState(false);
+  const [isCheckMate, setIsCheckMate] = useState(false);
+  
+  // const [socketMessagesStack , setSocketMessagesStack] = useState<string[]>([]);
+  // const socket = io('http://localhost:3000');
+  const socket = io('http://localhost:3000', {
+    transports: ['websocket'],
+  });
   //TODO: The stepsCounter finishes 1 movement ahead when someone wins, fix it
+
+  // useEffect(() => {
+  //   console.log('BOARD HAS BEEN UPDATED FROM THE SERVER');
+  // }, [board]);
+
+  const sendRequestMove = (row, col, piece) => {
+    if (socket) {
+      socket.emit('RequestMove', row, col, piece);
+    }
+
+  };
+
+  // const createChessboard = () => {
+  //   const board: string[][] = [];
+
+  //   for (let row = 0; row < 8; row++) {
+  //     board[row] = [];
+
+  //     for (let col = 0; col < 8; col++) {
+  //       board[row][col] = ''; 
+  //     }
+
+  //   }
+  //   return board;
+  // }
+
+  // useEffect(() => {
+  //   const emptyBoard = createChessboard();
+  //   const initialBoard = generateBlackPieces(generateWhitePieces(emptyBoard));
+  //   setBoard(initialBoard);
+  //   console.log(initialBoard);
+  // }, []);
 
   useEffect(() => {
 
+    socket.on('connect', () => {
+      console.log('Connected to the server');
+    });
 
-    if (stepsCounter === 0) {
-      return; //This is to avoid the first render when the board is empty
+    socket.on('currentBoard', (board:string[][], whoGoes:string, isMate:boolean) => {
+      setWhoGoes(whoGoes);
+      setBoard(board);
+      
+      setIsCheckMate(isMate);
+
+      console.log('BOARD HAS BEEN UPDATED FROM THE SERVER');
+      console.log('whoGoes', whoGoes);
+      setStepsCounter(stepsCounter + 1);
+
+      // setSocketMessagesStack((prevMensajes:string[]) => [...prevMensajes, newMessage]);
+    });
+
+    socket.on('checkMate', (colorWins: string) => {
+      console.error('Winner:', colorWins);
+      alert(colorWins);
+    });
+
+    // Cleanup
+    return () => {
+      socket.off('connect');
+    };
+  }, [boardLoaded]); 
+
+  useEffect(() => {
+    if (isCheckMate) {
+   alert('CHECKMATE!');
     }
 
-    const kingBlackRow = kingBlackPos.row;
-    const kingBlackCol = kingBlackPos.col;
+  }, [isCheckMate]); 
 
-    const kingWhiteRow = kingWhitePos.row;
-    const kingWhiteCol = kingWhitePos.col;
+  // function generateRandomBoardData(): string[][] {
+  //   const pieces = [
+  //     'White_Rook', 'White_Knight', 'White_Bishop', 'White_Queen', 'White_King', 'White_Bishop', 'White_Knight', 'White_Rook',
+  //     'White_Pawn', 'White_Pawn', 'White_Pawn', 'White_Pawn', 'White_Pawn', 'White_Pawn', 'White_Pawn', 'White_Pawn',
+  //     'Black_Rook', 'Black_Knight', 'Black_Bishop', 'Black_Queen', 'Black_King', 'Black_Bishop', 'Black_Knight', 'Black_Rook',
+  //     'Black_Pawn', 'Black_Pawn', 'Black_Pawn', 'Black_Pawn', 'Black_Pawn', 'Black_Pawn', 'Black_Pawn', 'Black_Pawn'
+  //   ];
+  
+  //   const board: string[][] = Array(8).fill(null).map(() => Array(8).fill(''));
+  
+  //   let piecesPlaced = 0;
+  //   while (piecesPlaced < 32) {
+  //     const randomRow = Math.floor(Math.random() * 8);
+  //     const randomCol = Math.floor(Math.random() * 8);
+  
+  //     if (board[randomRow][randomCol] === '') {
+  //       board[randomRow][randomCol] = pieces[piecesPlaced];
+  //       piecesPlaced++;
+  //     }
+  //   }
+  
+  //   return board;
+  // }
 
-    //TODO: Check if the Kings are in danger after each movement
-    const objectKingWhite = isInDanger(board, 'White_King', {row: kingWhiteRow, col: kingWhiteCol});
-    const objectKingBlack = isInDanger(board, 'Black_King', {row: kingBlackRow, col: kingBlackCol});
+  // useEffect(() => {
 
-    const checkIsCheckMate = (row:number, col:number, kingColor:string) => {
+  //   if (stepsCounter === 0) {
+  //     return; //This is to avoid the first render when the board is empty
+  //   }
 
-      console.error('***The King is in danger, let\'s check if it\'s checkmate***');
+  //   const intervalId = setInterval(() => {
+  //     const newBoardData = generateRandomBoardData();
+  
+  //     setBoard(newBoardData);
+  //     console.error('New board data', newBoardData);
+  //   }, 1000); // 
+  
+  //   return () => clearInterval(intervalId);
+  // }, [socketData]);
 
-      const possibleMoves = [
-        {row: row+1, col: col},
-        {row: row-1, col: col},
-        {row: row, col: col+1},
-        {row: row, col: col-1},
-        {row: row+1, col: col+1},
-        {row: row+1, col: col-1},
-        {row: row-1, col: col+1},
-        {row: row-1, col: col-1},
-      ];
-
-      let possibleDangerPieces = [];
-      const actualDangerPieces: DangerPiece[] = [];
-
-      if(whoGoes === 'White') {
-      possibleDangerPieces = objectKingWhite.currentDangerPiecesLineal
-      .concat(objectKingWhite.currentDangerPicesDiagonal)
-      .concat(objectKingWhite.currentKnightPathPieces);
-      } else {
-        possibleDangerPieces = objectKingBlack.currentDangerPiecesLineal
-        .concat(objectKingBlack.currentDangerPicesDiagonal)
-        .concat(objectKingBlack.currentKnightPathPieces);
-      }
-
-      console.error('PossibleDangerPieces', possibleDangerPieces);
-
-      let isCheckMate = true;
+  // useEffect(() => {
 
 
-      possibleDangerPieces?.forEach((piece) => {
+  //   if (stepsCounter === 0) {
+  //     return; //This is to avoid the first render when the board is empty
+  //   }
+  //   setSocketData( socketData + 1);
+
+  //   const kingBlackRow = kingBlackPos.row;
+  //   const kingBlackCol = kingBlackPos.col;
+
+  //   const kingWhiteRow = kingWhitePos.row;
+  //   const kingWhiteCol = kingWhitePos.col;
+
+  //   //TODO: Check if the Kings are in danger after each movement
+  //   const objectKingWhite = isInDanger(board, 'White_King', {row: kingWhiteRow, col: kingWhiteCol});
+  //   const objectKingBlack = isInDanger(board, 'Black_King', {row: kingBlackRow, col: kingBlackCol});
+
+  //   const checkIsCheckMate = (row:number, col:number, kingColor:string) => {
+
+  //     console.error('***The King is in danger, let\'s check if it\'s checkmate***');
+
+  //     const possibleMoves = [
+  //       {row: row+1, col: col},
+  //       {row: row-1, col: col},
+  //       {row: row, col: col+1},
+  //       {row: row, col: col-1},
+  //       {row: row+1, col: col+1},
+  //       {row: row+1, col: col-1},
+  //       {row: row-1, col: col+1},
+  //       {row: row-1, col: col-1},
+  //     ];
+
+  //     let possibleDangerPieces = [];
+  //     const actualDangerPieces: DangerPiece[] = [];
+
+  //     if(whoGoes === 'White') {
+  //     possibleDangerPieces = objectKingWhite.currentDangerPiecesLineal
+  //     .concat(objectKingWhite.currentDangerPicesDiagonal)
+  //     .concat(objectKingWhite.currentKnightPathPieces);
+  //     } else {
+  //       possibleDangerPieces = objectKingBlack.currentDangerPiecesLineal
+  //       .concat(objectKingBlack.currentDangerPicesDiagonal)
+  //       .concat(objectKingBlack.currentKnightPathPieces);
+  //     }
+
+  //     console.error('PossibleDangerPieces', possibleDangerPieces);
+
+  //     let isCheckMate = true;
+
+
+  //     possibleDangerPieces?.forEach((piece) => {
         
-        if (kingColor === 'White') {
-          const validDanger = MovementIsValid(board, piece.piece, piece.position, kingWhitePos) ? true : false;
+  //       if (kingColor === 'White') {
+  //         const validDanger = MovementIsValid(board, piece.piece, piece.position, kingWhitePos) ? true : false;
           
-          if (validDanger) {
-            actualDangerPieces.push(piece);
-          }
+  //         if (validDanger) {
+  //           actualDangerPieces.push(piece);
+  //         }
 
-        }
+  //       }
 
-        if (kingColor === 'Black') {
-          const validDanger = MovementIsValid(board, piece.piece, piece.position, kingBlackPos) ? true : false;
+  //       if (kingColor === 'Black') {
+  //         const validDanger = MovementIsValid(board, piece.piece, piece.position, kingBlackPos) ? true : false;
 
-          if (validDanger) {
-            actualDangerPieces.push(piece);
-          }
+  //         if (validDanger) {
+  //           actualDangerPieces.push(piece);
+  //         }
 
-        }
-        });
+  //       }
+  //       });
 
 
 
-        //TODO: If we check above all the pieces, that for wouldn't be necessary
-      for (let i = 0; i < possibleMoves.length; i++) {
+  //       //TODO: If we check, down below, all the pieces, this for loop wouldn't be necessary, delete it!
+  //     for (let i = 0; i < possibleMoves.length; i++) {
 
-        if (possibleMoves[i].row < 0 || possibleMoves[i].row > 7 || possibleMoves[i].col < 0 || possibleMoves[i].col > 7) {
-          continue;
-        }
+  //       if (possibleMoves[i].row < 0 || possibleMoves[i].row > 7 || possibleMoves[i].col < 0 || possibleMoves[i].col > 7) {
+  //         continue;
+  //       }
 
-        if (!MovementIsValid(board, `${kingColor}_King`, {row, col}, possibleMoves[i])) {
-          continue;
-        }
+  //       if (!MovementIsValid(board, `${kingColor}_King`, {row, col}, possibleMoves[i])) {
+  //         continue;
+  //       }
 
-        const returnedDanger = isInDanger(board, `${kingColor}_King`, possibleMoves[i]);
-        const isDanger = returnedDanger.inDanger;
+  //       const returnedDanger = isInDanger(board, `${kingColor}_King`, possibleMoves[i]);
+  //       const isDanger = returnedDanger.inDanger;
 
-        if (!isDanger) {
-          //We can push to an array the possible moves the king can do in order to scape
-          console.error(`The king ${kingColor} would be not in danger if does the movement: `, possibleMoves[i]);
-          //Once we have the possible moves, we need to check recursively if these moves are dangerous or not
-          isCheckMate = false;
-          break;
-        }
-      }
+  //       if (!isDanger) {
+  //         //We can push to an array the possible moves the king can do in order to scape
+  //         console.error(`The king ${kingColor} would be not in danger if does the movement: `, possibleMoves[i]);
+  //         //Once we have the possible moves, we need to check recursively if these moves are dangerous or not
+  //         isCheckMate = false;
+  //         break;
+  //       }
+  //     }
 
       
-      console.log('ActualDangerPieces', actualDangerPieces);
-      // let dangerousPossibleEatablePieces = [];
+  //     console.log('ActualDangerPieces', actualDangerPieces);
+  //     // let dangerousPossibleEatablePieces = [];
 
-      const colorPiecesToSearch = kingColor === 'White' ? 'White' : 'Black';
+  //     const colorPiecesToSearch = kingColor === 'White' ? 'White' : 'Black';
 
-    actualDangerPieces.forEach((actualDangerPiece) => {
+  //   actualDangerPieces.forEach((actualDangerPiece) => {
 
-        board.forEach((rowArray, row) => {
+  //       board.forEach((rowArray, row) => {
 
-          rowArray.forEach((piece, col) => {
+  //         rowArray.forEach((piece, col) => {
 
-            console.error(' estamos buscando piezas de color', colorPiecesToSearch);
+  //           console.error(' estamos buscando piezas de color', colorPiecesToSearch);
 
-              if(piece.split('_')[0] === colorPiecesToSearch) {
+  //             if(piece.split('_')[0] === colorPiecesToSearch) {
 
-              //TODO: Refactor this two ifs statements into a more compact one
+  //             //TODO: Refactor this two ifs statements into a more compact one
 
-                const isValid = MovementIsValid(board, piece, {row, col},
-                  {row: actualDangerPiece.position.row, col: actualDangerPiece.position.col});
+  //               const isValid = MovementIsValid(board, piece, {row, col},
+  //                 {row: actualDangerPiece.position.row, col: actualDangerPiece.position.col});
 
-                if (isValid) {
-                  // dangerousPossibleEatablePieces.push({piece, position: {row, col}});
+  //               if (isValid) {
+  //                 // dangerousPossibleEatablePieces.push({piece, position: {row, col}});
                   
-                  console.error('HAY UNA SALIDA AL JAQUE EN:::::', piece, {row, col},
-                    'que se debe mover hacia', actualDangerPiece.position);
+  //                 console.error('HAY UNA SALIDA AL JAQUE EN:::::', piece, {row, col},
+  //                   'que se debe mover hacia', actualDangerPiece.position);
 
-                  isCheckMate = false;
+  //                 isCheckMate = false;
 
-                }
+  //               }
 
-            }
+  //           }
 
-            });
+  //           });
 
-          });
+  //         });
 
-      });
-
-
-      if (isCheckMate) {
-        alert('Checkmate!');
-        console.error('CHECKMATE, THE KING LOSER IS', kingColor);
-      }
-    }
+  //     });
 
 
-    if (objectKingWhite.inDanger || objectKingBlack.inDanger) {
-      alert('Check! The king is in danger');
-      checkIsCheckMate(kingWhiteRow, kingWhiteCol, `${whoGoes === 'White' ? 'White' : 'Black'}`);
-      // checkIsCheckMate(kingBlackRow, kingBlackCol, 'Black');
-    }
-  }
-  , [whoGoes]);
+  //     if (isCheckMate) {
+  //       alert('Checkmate!');
+  //       console.error('CHECKMATE, THE KING LOSER IS', kingColor);
+  //     }
+  //   }
+
+
+  //   if (objectKingWhite.inDanger || objectKingBlack.inDanger) {
+  //     alert('Check! The king is in danger');
+  //     checkIsCheckMate(kingWhiteRow, kingWhiteCol, `${whoGoes === 'White' ? 'White' : 'Black'}`);
+  //     // checkIsCheckMate(kingBlackRow, kingBlackCol, 'Black');
+  //   }
+  // }
+  // , [whoGoes]);
 
 
   const handleDragStart = (e:DragEvent, row: number, col: number) => {
     setDraggedPiece({ row, col, piece: board[row][col] });
     e.dataTransfer.effectAllowed = "move"; //That avoids the green plus sign
-
   };
 
   const handleDragOver = (e:DragEvent) => {
@@ -197,7 +335,13 @@ function App() {
   };
 
   const handleDrop = (e:DragEvent, row: number, col: number) => {
+
     e.preventDefault();
+
+    if (draggedPiece.row === row && draggedPiece.col === col) {
+      return;
+    }
+
     const pieceColor = draggedPiece.piece.split('_')[0];
 
     const isValid = MovementIsValid(board, draggedPiece.piece,
@@ -206,7 +350,6 @@ function App() {
     if (draggedPiece.row === row && draggedPiece.col === col) {
       return;
     }
-
 
     if (draggedPiece && isValid) {
 
@@ -218,8 +361,6 @@ function App() {
   
       let kingWhiteDanger = false;
       let kingBlackDanger = false;
-
-      
 
       if (whoGoes !== pieceColor) { //TODO: Legitimize to admit the user only moves his pieces
         console.error('You cannot move the other player pieces');
@@ -233,9 +374,6 @@ function App() {
         const returnedDanger = isInDanger(board, 'White_King', {row, col});
         kingWhiteDanger = returnedDanger.inDanger;
 
-
-        console.error('indanger returns', returnedDanger);
-        
         
         if (kingWhiteDanger) {
           console.error('Check! White King in danger');
@@ -266,89 +404,31 @@ function App() {
       kingBlackDanger = returnedDangerBlack.inDanger;
       }
 
+      // // TODO: TODO: Check if there's conflict when the two kings are in danger!    
 
-      // // TODO: TODO: Check if there's conflict when the two kings are in danger!
-      // if (kingWhiteDanger) {
-      //   checkIsCheckMate(kingWhiteRow, kingWhiteCol, 'White');
-      // }
-      // if (kingBlackDanger) {
-      //   checkIsCheckMate(kingBlackRow, kingBlackCol, 'Black');
-      // }
-      
-
-      
       //Check if the king's are moving to a check position, if so, don't allow the movement and show a message 
-      if (kingWhiteDanger && draggedPiece.piece !== 'White_King'
-        && draggedPiece.piece.split('_')[0] === 'White') {
-        console.error('White King in danger, you cannot MOVE THIS PIECE');
-        // kingWhiteDanger = false;
-        return;
-      }
-
-      if (kingBlackDanger && draggedPiece.piece !== 'Black_King'
-        && draggedPiece.piece.split('_')[0] === 'Black') {
-          console.error('BLACK King in danger, you cannot MOVE THIS PIECE');
-        // kingBlackDanger = false;
-        return;
-      }
+      
+      //TODO: Fix this two ifs, for a more realistic game mode, we decided to allow the player to move the king to a dangerous position
+      // if (kingWhiteDanger && draggedPiece.piece !== 'White_King'
+      //   && draggedPiece.piece.split('_')[0] === 'White') {
+      //   console.error('White King in danger, you cannot MOVE THIS PIECE');
+      //   return;
+      // }
+      // if (kingBlackDanger && draggedPiece.piece !== 'Black_King'
+      //   && draggedPiece.piece.split('_')[0] === 'Black') {
+      //     console.error('BLACK King in danger, you cannot MOVE THIS PIECE');
+      //   return;
+      // }
 
       setWhoGoes(whoGoes === 'White' ? 'Black' : 'White');
-      setStepsCounter(stepsCounter + 1);
       const newBoard = board.slice();
       newBoard[draggedPiece.row][draggedPiece.col] = '';
       newBoard[row][col] = draggedPiece.piece;
-      setBoard(newBoard);
-
+      // setBoard(newBoard);
+      sendRequestMove(row, col, draggedPiece);
     }
   };
-
-  const createChessboard = () => {
-    const board: string[][] = [];
-
-    for (let row = 0; row < 8; row++) {
-      board[row] = [];
-
-      for (let col = 0; col < 8; col++) {
-        board[row][col] = ''; 
-      }
-
-    }
-    return board;
-  }
   
-
-  // We se parate the generation of the pieces in two functions, for animation purposes in the near future.
-  const generateWhitePieces = (board: string[][]) => {
-    board[0][0] = 'White_Rook';
-    board[0][1] = 'White_Knight';
-    board[0][2] = 'White_Bishop'; 
-    board[0][3] = 'White_Queen';
-    board[0][4] = 'White_King';
-    board[0][5] = 'White_Bishop';
-    board[0][6] = 'White_Knight';
-    board[0][7] = 'White_Rook';
-    for (let col = 0; col < 8; col++) {
-      board[1][col] = 'White_Pawn'; 
-    }
-    return board;
-  }
-
-  const generateBlackPieces = (board: string[][]) => {
-    board[7][0] = 'Black_Rook';
-    board[7][1] = 'Black_Knight';
-    board[7][2] = 'Black_Bishop';
-    board[7][3] = 'Black_Queen';
-    board[7][4] = 'Black_King';
-    board[7][5] = 'Black_Bishop';
-    board[7][6] = 'Black_Knight';
-    board[7][7] = 'Black_Rook';
-
-    for (let col = 0; col < 8; col++) {
-      board[6][col] = 'Black_Pawn';
-    }
-
-    return board;
-  }
 
   const Piece = (pieceName: string, color: string, row: number, col:number, isRewarded ) => {
     // TODO: isRewarded should be a component state of the piece, we should change Piece to a functional component
@@ -382,12 +462,6 @@ function App() {
   // // setBoard(initialBoardGenerated);  
   // console.log(board);
 
-  useEffect(() => {
-    const emptyBoard = createChessboard();
-    const initialBoard = generateBlackPieces(generateWhitePieces(emptyBoard));
-    setBoard(initialBoard);
-    console.log(initialBoard);
-  }, []);
 
   const rowStyle = {
     color: 'white',
@@ -423,14 +497,14 @@ function App() {
           count is {count}
         </button>
       </div> */}
-
-      {
+      {!boardLoaded ? <button onClick={() => setBoardLoaded(true)}>Load board</button> : null}
+      { boardLoaded && board.length> 0 ? (
         
-        board.map((row, rowIndex) => {
+        board?.map((row, rowIndex) => {
           return (
             <div key={rowIndex} className={`row_${rowIndex}`} style={rowStyle}>
               {
-                row.map((pieceStringName, cellIndex) => {
+                row?.map((pieceStringName, cellIndex) => {
                   const pieceName = pieceStringName.split('_')[1] && pieceStringName.split('_')[1].toLowerCase();
                   const pieceColor = pieceStringName.split('_')[0] && pieceStringName.split('_')[0].toLowerCase();
 
@@ -444,6 +518,7 @@ function App() {
             </div>
           )
         })
+      ) : (<div>Loading...</div>)
       }
 
 
