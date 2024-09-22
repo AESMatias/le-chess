@@ -1,0 +1,3 @@
+[submodule "le-chess-backend"]
+	path = le-chess-backend
+	url = https://github.com/AESMatias/le-chess-backend.git

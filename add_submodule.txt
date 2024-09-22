@@ -1,0 +1,10 @@
+git submodule add <url>
+git submodule init
+git submodule update
+git commit -m 'submodule added'
+
+Note:
+to clone this repository, in the future, i will be need to use:
+git clone --recurse-submodules <url-main-repo>
+or, if i have already the repository without the submodules:
+git submodule update --init --recursive

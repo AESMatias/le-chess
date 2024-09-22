@@ -70,7 +70,6 @@ function App() {
     if (socket) {
       socket.emit('RequestMove', row, col, piece);
     }
-
   };
 
   // const createChessboard = () => {
