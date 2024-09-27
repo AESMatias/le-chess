@@ -3,29 +3,33 @@ name: Update Submodule
 on:
   push:
     branches:
-      - main
-    paths:
-      - 'le-chess-backend/**'  # Submodule PATH
+      - main  # o el nombre de tu rama principal donde está el submódulo
+  workflow_dispatch:  # permite ejecutar el workflow manualmente
 
 jobs:
-  update_submodule:
+  check_submodule:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout the repo
+      - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          submodules: true  # Cloning the submodules
+          fetch-depth: 0
+          submodules: 'recursive'
 
-      - name: Pull latest submodule changes
+      - name: Check for submodule changes
+        id: check_changes
+        run: |
+          git diff --exit-code HEAD^ HEAD le-chess-backend || echo "changes=true" >> $GITHUB_OUTPUT
+
+      - name: Update submodule if changed
+        if: steps.check_changes.outputs.changes == 'true'
         run: |
           cd le-chess-backend
-          git pull origin main  
-
-      - name: Add and commit updated submodule
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
+          git fetch origin
+          git checkout origin/main
+          cd ..
+          git config user.name github-actions
+          git config user.email github-actions@github.com
           git add le-chess-backend
-          git commit -m "Updating le-chess-backend submodule to latest version"
-          git push origin main
+          git commit -m "Update le-chess-backend submodule"
+          git push
