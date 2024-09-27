@@ -3,8 +3,8 @@ name: Update Submodule
 on:
   push:
     branches:
-      - main  # o el nombre de tu rama principal donde está el submódulo
-  workflow_dispatch:  # permite ejecutar el workflow manualmente
+      - main
+  workflow_dispatch:
 
 jobs:
   check_submodule:
