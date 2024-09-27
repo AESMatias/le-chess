@@ -22,6 +22,8 @@ jobs:
 
       - name: Add and commit updated submodule
         run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
           git add le-chess-backend
           git commit -m "Updating le-chess-backend submodule to latest version"
           git push origin main
