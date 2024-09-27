@@ -1,10 +1,17 @@
+import { caseCastling } from './caseCastling.tsx';
 import {isAimSameColorPieces} from './isAimSameColorPieces.tsx';
 import { Coords } from './Types.tsx';
 
-export const MovementIsValid = (board: string[][], pieceId:string, currentPosition: Coords, toPosition: Coords) => {
+interface returnedObject {
+  isValid: boolean;
+  castlingEvent: boolean;
+} 
+export const MovementIsValid = (board: string[][], pieceId:string, currentPosition: Coords,
+   toPosition: Coords, sendRequestMove:any, draggedPiece:any) :returnedObject => {
 
 
     let isValid = false;
+    let castlingEvent = false;
     const currentRow = currentPosition['row'];
     const currentCol = currentPosition['col'];
     const toRow = toPosition['row'];
@@ -17,7 +24,8 @@ export const MovementIsValid = (board: string[][], pieceId:string, currentPositi
     //TODO: Check the pieces don't go out of the board in the server!
     if (toCol < 0 || toCol > 7 || toRow < 0 || toRow > 7) {
       console.log("Invalid movement, out of the board")
-      return false
+      isValid = false
+      return {isValid, castlingEvent}
     }
 
     const recursivePathCheckVertical = (currentPosition:Coords, toPosition:Coords, direction:number) => {
@@ -82,31 +90,69 @@ export const MovementIsValid = (board: string[][], pieceId:string, currentPositi
 
   const isAimSameColor = isAimSameColorPieces(board, currentPosition, toPosition)
 
-  if (isAimSameColor) {
-    console.log("Invalid movement, the target piece is the same color as the current piece")
-    return false
+  if (pieceType === 'King') {
+
+    const isCastling = caseCastling(board, pieceId, currentPosition, toPosition, sendRequestMove, draggedPiece);
+
+
+    if (isCastling) {
+      isValid = true
+      castlingEvent = true
+    }
+
+    if ((toRow === currentRow + 1 || toRow === currentRow - 1) && toCol === currentCol && !isAimSameColor) {
+      isValid = true
+    }
+    if ((toCol === currentCol + 1 || toCol === currentCol - 1) && toRow === currentRow && !isAimSameColor) {
+      isValid = true
+    }
+    if (toRow === currentRow + 1 && (toCol === currentCol + 1 || toCol === currentCol - 1) && !isAimSameColor) {
+      isValid = true
+    }
+    if (toRow === currentRow - 1 && (toCol === currentCol + 1 || toCol === currentCol - 1) && !isAimSameColor) {
+      isValid = true
+    }
+
   }
 
+  if (isAimSameColor && pieceType !== 'King') {
+    console.log("Invalid movement, the target piece is the same color as the current piece")
+    isValid = false
+    return {isValid, castlingEvent}
+  } 
+  //TODO: DELETE THE && !isAimSameColor in the following if statements
+
   
-  if (pieceId === 'White_Pawn') {
+  else if (pieceId === 'White_Pawn' && !isAimSameColor) {
     if (toRow === currentRow + 1 && toCol === currentCol) {
       isValid = board[toRow][toCol] !== '' ? false : true
     }
     if (toRow === currentRow + 1 && (toCol === currentCol + 1 || toCol === currentCol - 1)) {
       isValid = board[toRow][toCol] !== '' ? true : false
     }
+    // First pawn movement case: can be moved one or two steps ahead.
+    if ( (toRow === currentRow + 1 || toRow === currentRow + 2) 
+      && toCol === currentCol
+      && ((currentRow == 1) && (toRow == 3)) ){
+      isValid = board[toRow][toCol] !== '' ? false : true
+    }
   }
 
-  else if (pieceId === 'Black_Pawn') {
+  else if (pieceId === 'Black_Pawn' && !isAimSameColor) {
     if (toRow === currentRow - 1 && toCol === currentCol) {
       isValid = board[toRow][toCol] !== '' ? false : true
     }
     if (toRow === currentRow - 1 && (toCol === currentCol + 1 || toCol === currentCol - 1)) {
       isValid = board[toRow][toCol] !== '' ? true : false
     }
+    if ((toRow === currentRow - 1 || toRow === currentRow - 2 )
+      && toCol === currentCol
+      && ((currentRow == 6) && (toRow == 4)) ){
+      isValid = board[toRow][toCol] !== '' ? false : true
+    }
   }
 
-  else if (pieceType === 'Queen') {
+  else if (pieceType === 'Queen' && !isAimSameColor) {
     const directionVertical = currentRow < toRow ? +1 : -1;
     const directionHorizontal = currentCol < toCol ? +1 : -1;
     const diagonalDirectionRow = currentRow < toRow ? +1 : -1;
@@ -127,7 +173,7 @@ export const MovementIsValid = (board: string[][], pieceId:string, currentPositi
     // return isValid
   }
 
-  else if (pieceType === 'Bishop') {
+  else if (pieceType === 'Bishop' && !isAimSameColor) {
     const diagonalDirectionRow = currentRow < toRow ? +1 : -1;
     const diagonalDirectionCol = currentCol < toCol ? +1 : -1;
     // let isValid = false;
@@ -140,7 +186,7 @@ export const MovementIsValid = (board: string[][], pieceId:string, currentPositi
     // return isValid
   }
 
-  else if (pieceType === 'Rook') {
+  else if (pieceType === 'Rook' && !isAimSameColor) {
     const directionVertical = currentRow < toRow ? +1 : -1;
     const directionHorizontal = currentCol < toCol ? +1 : -1;
     // let isValid = false;
@@ -155,7 +201,7 @@ export const MovementIsValid = (board: string[][], pieceId:string, currentPositi
     // return isValid
   }
 
-  else if (pieceType === 'Knight') {
+  else if (pieceType === 'Knight' && !isAimSameColor) {
     if (toRow === currentRow + 2 && (toCol === currentCol + 1 || toCol === currentCol - 1)) {
       isValid = true
     }
@@ -169,25 +215,9 @@ export const MovementIsValid = (board: string[][], pieceId:string, currentPositi
       isValid = true
     }
   }
-
-  else if (pieceType === 'King') {
-    if ((toRow === currentRow + 1 || toRow === currentRow - 1) && toCol === currentCol) {
-      isValid = true
-    }
-    if ((toCol === currentCol + 1 || toCol === currentCol - 1) && toRow === currentRow) {
-      isValid = true
-    }
-    if (toRow === currentRow + 1 && (toCol === currentCol + 1 || toCol === currentCol - 1)) {
-      isValid = true
-    }
-    if (toRow === currentRow - 1 && (toCol === currentCol + 1 || toCol === currentCol - 1)) {
-      isValid = true
-    }
-  }
   
-
   return (
-    isValid
+    {isValid, castlingEvent}
   )
 }
 

@@ -4,33 +4,13 @@ import {svgPieces} from './assets/svgPieces.tsx'
 import {MovementIsValid} from './MovementIsValid.tsx'
 import isInDanger from './isInDanger.tsx';
 import io from 'socket.io-client';
+import { caseCastling } from './caseCastling.tsx';
 
-interface Coords {
+interface CoordsAndPiece {
   row: number;
   col: number;
   piece: string;
 }
-
-// interface KingStatus {
-//   whiteKingStatus: boolean;
-//   blackKingStatus: boolean;
-// }
-
-interface DangerPiece {
-  piece: string;
-  position: { row: number; col: number };
-}
-
-interface movementData {
-  piece: string;
-  from: { row: number; col: number };
-  to: { row: number; col: number };
-}
-
-interface actualBoard {
-  board: string[][];
-}
-
 // const PORT = process.env.PORT || 3000;
 
 function App() {
@@ -45,13 +25,12 @@ function App() {
     ['', '', '', '', '', '', '', ''],
     ['Black_Rook', 'Black_Knight', 'Black_Bishop', 'Black_Queen', 'Black_King', 'Black_Bishop', 'Black_Knight', 'Black_Rook']
   ]);
-  const [draggedPiece, setDraggedPiece] = useState<Coords>({ row: -1, col: -1, piece: '' });
-  const [kingWhitePos, setKingWhitePos] = useState<Coords>({ row: 0, col: 4, piece: 'White_King' });
-  const [kingBlackPos, setKingBlackPos] = useState<Coords>({ row: 7, col: 4, piece: 'Black_King' });
+  const [draggedPiece, setDraggedPiece] = useState<CoordsAndPiece>({ row: -1, col: -1, piece: '' });
+  const [kingWhitePos, setKingWhitePos] = useState<CoordsAndPiece>({ row: 0, col: 4, piece: 'White_King' });
+  const [kingBlackPos, setKingBlackPos] = useState<CoordsAndPiece>({ row: 7, col: 4, piece: 'Black_King' });
   // const [whoColorAmI, setWhoColorAmI] = useState<string>('White');
   const [whoGoes, setWhoGoes] = useState<string>('White');
   const [stepsCounter, setStepsCounter] = useState<number>(-2);
-  const [socketData, setSocketData] = useState(0);
   const [boardLoaded, setBoardLoaded] = useState(false);
   const [isCheckMate, setIsCheckMate] = useState(false);
   
@@ -66,7 +45,7 @@ function App() {
   //   console.log('BOARD HAS BEEN UPDATED FROM THE SERVER');
   // }, [board]);
 
-  const sendRequestMove = (row, col, piece) => {
+  const sendRequestMove = (row: number, col:number, piece: CoordsAndPiece) => {
     if (socket) {
       socket.emit('RequestMove', row, col, piece);
     }
@@ -105,8 +84,8 @@ function App() {
       
       setIsCheckMate(isMate);
 
-      console.log('BOARD HAS BEEN UPDATED FROM THE SERVER');
-      console.log('whoGoes', whoGoes);
+      // console.log('BOARD HAS BEEN UPDATED FROM THE SERVER');
+      // console.log('whoGoes', whoGoes);
       setStepsCounter(stepsCounter + 1);
 
       // setSocketMessagesStack((prevMensajes:string[]) => [...prevMensajes, newMessage]);
@@ -121,7 +100,7 @@ function App() {
     return () => {
       socket.off('connect');
     };
-  }, [boardLoaded]); 
+  }, [boardLoaded]);
 
   useEffect(() => {
     if (isCheckMate) {
@@ -343,8 +322,11 @@ function App() {
 
     const pieceColor = draggedPiece.piece.split('_')[0];
 
-    const isValid = MovementIsValid(board, draggedPiece.piece,
-       {row: draggedPiece.row, col: draggedPiece.col}, {row, col});
+    
+    const {isValid, castlingEvent} = MovementIsValid(board, draggedPiece.piece,
+       {row: draggedPiece.row, col: draggedPiece.col}, {row, col}, sendRequestMove, draggedPiece);
+
+
 
     if (draggedPiece.row === row && draggedPiece.col === col) {
       return;
@@ -420,16 +402,21 @@ function App() {
       // }
 
       setWhoGoes(whoGoes === 'White' ? 'Black' : 'White');
-      const newBoard = board.slice();
-      newBoard[draggedPiece.row][draggedPiece.col] = '';
-      newBoard[row][col] = draggedPiece.piece;
-      // setBoard(newBoard);
-      sendRequestMove(row, col, draggedPiece);
+      
+      if (!castlingEvent) {
+        const newBoard = board.slice();
+        newBoard[draggedPiece.row][draggedPiece.col] = '';
+        newBoard[row][col] = draggedPiece.piece;
+        // setBoard(newBoard);
+        sendRequestMove(row, col, draggedPiece);
+      }
+
     }
   };
   
 
-  const Piece = (pieceName: string, color: string, row: number, col:number, isRewarded ) => {
+  const Piece = (pieceName: string, color: string, row: number, col:number, isRewarded:boolean ) => {
+    const hasBeenRewarded = isRewarded;
     // TODO: isRewarded should be a component state of the piece, we should change Piece to a functional component
 
     // const [hasBeenRewarded, sethasBeenRewarded] = useState(false);
