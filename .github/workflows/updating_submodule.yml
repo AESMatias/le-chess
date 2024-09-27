@@ -1,0 +1,27 @@
+name: Update Submodule
+
+on:
+  push:
+    paths:
+      - 'le-chess-backend/**'  # Submodule PATH
+
+jobs:
+  update_submodule:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@v3
+        with:
+          submodules: true  # Cloning the submodules
+
+      - name: Pull latest submodule changes
+        run: |
+          cd le-chess-backend
+          git pull origin main  
+
+      - name: Add and commit updated submodule
+        run: |
+          git add le-chess-backend
+          git commit -m "Updating le-chess-backend submodule to latest version"
+          git push origin main
