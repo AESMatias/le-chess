@@ -2,6 +2,8 @@ name: Update Submodule
 
 on:
   push:
+    branches:
+      - main
     paths:
       - 'le-chess-backend/**'  # Submodule PATH
 
